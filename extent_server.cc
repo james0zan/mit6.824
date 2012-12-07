@@ -31,7 +31,7 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
   ex.str = buf;
   
   unsigned int t = time(NULL);
-  ex.attr.ctime = t; ex.attr.mtime = t;
+  ex.attr.ctime = ex.attr.mtime = t;
   ex.attr.size = buf.size();
   return extent_protocol::OK;
 }
@@ -70,4 +70,3 @@ int extent_server::remove(extent_protocol::extentid_t id, int &)
   disk.erase(it);
   return extent_protocol::OK;
 }
-

@@ -79,13 +79,17 @@ class yfs_client {
   int getfile(inum, fileinfo &);
   int getdir(inum, dirinfo &);
 
-  int read(inum ino, std::string &s);
-  int write(inum ino, std::string s);
+  int get(inum ino, std::string &s);
+  int put(inum ino, std::string s);
   int remove(inum ino);
-  
+
   int create(inum parent, std::string name, inum &ino, bool dir = false);
   int lookup(inum parent, std::string name, inum &ino);
   int readdir(inum dir, std::vector<dirent> &entries);
+
+  int resize(inum ino, unsigned long long size);
+  int write(inum ino, std::string s, off_t off, size_t &size);
+  int read(inum ino, std::string &s, off_t off, size_t &size);
 };
 
 #endif 
