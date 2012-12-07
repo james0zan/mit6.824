@@ -67,6 +67,25 @@ class yfs_client {
         entries.push_back(entry);
       }
     }
+
+    std::string remove_file(std::string file) {
+      std::ostringstream ost;
+      const char *f = file.c_str(), *d = x.c_str();
+      while(*d) {
+        if(strcmp(f, d) != 0) { // check if filename matches
+          std::string name = std::string(d);
+          d += strlen(d) + 1; // skip filename
+          inum ino = n2i(std::string(d));
+          d += strlen(d) + 1; // skip inum
+
+          ost << name << std::string(1, NULL) << ino << std::string(1, NULL);
+        } else {
+          d += strlen(d) + 1; // skip filename
+          d += strlen(d) + 1; // skip inum
+        }
+      }
+      return ost.str();
+    }
   };
  private:
   static std::string filename(inum);
@@ -92,6 +111,8 @@ class yfs_client {
   int resize(inum ino, unsigned long long size);
   int write(inum ino, std::string s, off_t off, size_t &size);
   int read(inum ino, std::string &s, off_t off, size_t &size);
+
+  int unlink(inum parent, std::string s);
 };
 
 #endif 

@@ -186,3 +186,18 @@ int yfs_client::read(inum ino, std::string &s, off_t off, size_t &size) {
   size = s.size();
   return OK;
 }
+
+int yfs_client::unlink(inum parent, std::string s) {
+  if(!isdir(parent)) return IOERR;
+
+  std::string tmp;
+  int ret = get(parent, tmp);  
+  if(ret != OK) return ret;
+  
+  file_list pdir(tmp); inum ino;
+  if(!pdir.in_dir(s, ino)) return NOENT;
+
+  ret = remove(ino);
+  if(ret != OK) return ret;
+  return put(parent, pdir.remove_file(s));
+}
