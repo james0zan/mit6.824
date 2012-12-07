@@ -95,4 +95,94 @@ yfs_client::getdir(inum inum, dirinfo &din)
 }
 
 
+int yfs_client::get(inum ino, std::string &s) {
+  return ec->get(ino, s);
+}
 
+int yfs_client::put(inum ino, std::string s) {
+  return ec->put(ino, s);
+}
+
+int yfs_client::remove(inum ino) {
+  return ec->remove(ino);
+}
+
+int yfs_client::lookup(inum parent, std::string name, inum &ino) {
+  if(!isdir(parent)) return IOERR;
+
+  std::string tmp;
+  int ret = get(parent, tmp);
+  if( ret != OK ) return ret;
+
+  file_list pdir(tmp);
+  if(pdir.in_dir(name, ino)) return EXIST;
+  else return NOENT;
+}
+
+int yfs_client::create(inum parent, std::string name, inum &ino, bool dir) {
+  if(!isdir(parent)) return IOERR;
+
+  std::string tmp;
+  int ret = get(parent, tmp);
+  if( ret != OK ) return ret;
+
+  file_list pdir(tmp);
+  if(pdir.in_dir(name, ino)) return EXIST;
+
+  //TODO: while 1 check getattr == NOENT
+  if(dir) ino = (rand() & 0x7FFFFFFF);
+  else ino = (rand() & 0xFFFFFFFF) | 0x80000000;
+  
+  ret = put(ino, "");
+  if(ret != OK) return ret;
+  ret = put(parent, pdir.add_file(name, ino));
+  return ret;
+}
+
+int yfs_client::readdir(inum dir, std::vector<dirent> &entries) {
+  if(!isdir(dir)) return IOERR;
+
+  std::string tmp;
+  int ret = get(dir, tmp);
+  if(ret != OK) return ret;
+
+  file_list pdir(tmp);
+  pdir.get_entries(entries);
+  return OK;
+}
+
+int yfs_client::resize(inum ino, unsigned long long size) {
+  if(!isfile(ino)) return IOERR;
+  std::string s;
+  int ret = get(ino, s);
+  if(ret != OK) return ret;
+
+  s.resize(size);
+  return put(ino, s);
+}
+
+int yfs_client::write(inum ino, std::string s, off_t off, size_t &size) {
+  if(!isfile(ino)) return IOERR;
+  //printf("write %llu %s\n", ino, s.c_str());
+  std::string file;
+  int ret = get(ino, file);
+  if(ret != OK) return ret;
+  //printf("write get %llu %s\n", ino, file.c_str());
+  if(off >= file.size()) file.resize(off);
+  file.replace(off, s.size(), s);
+  size = s.size();
+  ret = put(ino, file);
+  //printf("write done %llu %d\n", ino, ret);
+  return ret;
+}
+
+int yfs_client::read(inum ino, std::string &s, off_t off, size_t &size) {
+  if(!isfile(ino)) return IOERR;
+  int ret = get(ino, s);
+  if(ret != OK) return ret;
+
+  if(off >= s.size()) s = "";
+  else s = s.substr(off, size);
+  size = s.size();
+  return OK;
+}

@@ -53,5 +53,3 @@ extent_client::remove(extent_protocol::extentid_t eid)
   ret = cl->call(extent_protocol::remove, eid, r);
   return ret;
 }
-
-
