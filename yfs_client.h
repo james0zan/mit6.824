@@ -11,6 +11,7 @@
 
 class yfs_client {
   extent_client *ec;
+  lock_client *lc;
  public:
 
   typedef unsigned long long inum;
@@ -109,7 +110,7 @@ class yfs_client {
   int readdir(inum dir, std::vector<dirent> &entries);
 
   int resize(inum ino, unsigned long long size);
-  int write(inum ino, std::string s, off_t off, size_t &size);
+  int write(inum ino, std::string s, off_t off);
   int read(inum ino, std::string &s, off_t off, size_t &size);
 
   int unlink(inum parent, std::string s);

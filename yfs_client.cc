@@ -10,11 +10,23 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+struct myScopeLock {
+  lock_client *lc;
+  yfs_client::inum ino;
+
+  myScopeLock(lock_client *lc_, yfs_client::inum ino_) {
+    lc = lc_; ino = ino_;
+    lc->acquire(ino);
+  }
+  ~ myScopeLock() {
+    lc->release(ino);
+  }
+};
 
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-
+  lc = new lock_client(lock_dst);
 }
 
 yfs_client::inum
@@ -52,6 +64,7 @@ int
 yfs_client::getfile(inum inum, fileinfo &fin)
 {
   int r = OK;
+  //myScopeLock L(lc, inum);
   // You modify this function for Lab 3
   // - hold and release the file lock
 
@@ -77,6 +90,7 @@ int
 yfs_client::getdir(inum inum, dirinfo &din)
 {
   int r = OK;
+  //myScopeLock L(lc, inum);
   // You modify this function for Lab 3
   // - hold and release the directory lock
 
@@ -109,7 +123,7 @@ int yfs_client::remove(inum ino) {
 
 int yfs_client::lookup(inum parent, std::string name, inum &ino) {
   if(!isdir(parent)) return IOERR;
-
+  //myScopeLock L(lc, parent);
   std::string tmp;
   int ret = get(parent, tmp);
   if( ret != OK ) return ret;
@@ -121,7 +135,7 @@ int yfs_client::lookup(inum parent, std::string name, inum &ino) {
 
 int yfs_client::create(inum parent, std::string name, inum &ino, bool dir) {
   if(!isdir(parent)) return IOERR;
-
+  myScopeLock L(lc, parent);
   std::string tmp;
   int ret = get(parent, tmp);
   if( ret != OK ) return ret;
@@ -132,7 +146,7 @@ int yfs_client::create(inum parent, std::string name, inum &ino, bool dir) {
   //TODO: while 1 check getattr == NOENT
   if(dir) ino = (rand() & 0x7FFFFFFF);
   else ino = (rand() & 0xFFFFFFFF) | 0x80000000;
-  
+  //myScopeLock L2(lc, ino);
   ret = put(ino, "");
   if(ret != OK) return ret;
   ret = put(parent, pdir.add_file(name, ino));
@@ -141,7 +155,7 @@ int yfs_client::create(inum parent, std::string name, inum &ino, bool dir) {
 
 int yfs_client::readdir(inum dir, std::vector<dirent> &entries) {
   if(!isdir(dir)) return IOERR;
-
+  //myScopeLock L2(lc, dir);
   std::string tmp;
   int ret = get(dir, tmp);
   if(ret != OK) return ret;
@@ -153,6 +167,7 @@ int yfs_client::readdir(inum dir, std::vector<dirent> &entries) {
 
 int yfs_client::resize(inum ino, unsigned long long size) {
   if(!isfile(ino)) return IOERR;
+  myScopeLock L(lc, ino);
   std::string s;
   int ret = get(ino, s);
   if(ret != OK) return ret;
@@ -161,8 +176,9 @@ int yfs_client::resize(inum ino, unsigned long long size) {
   return put(ino, s);
 }
 
-int yfs_client::write(inum ino, std::string s, off_t off, size_t &size) {
+int yfs_client::write(inum ino, std::string s, off_t off) {
   if(!isfile(ino)) return IOERR;
+  myScopeLock L(lc, ino);
   //printf("write %llu %s\n", ino, s.c_str());
   std::string file;
   int ret = get(ino, file);
@@ -170,7 +186,6 @@ int yfs_client::write(inum ino, std::string s, off_t off, size_t &size) {
   //printf("write get %llu %s\n", ino, file.c_str());
   if(off >= file.size()) file.resize(off);
   file.replace(off, s.size(), s);
-  size = s.size();
   ret = put(ino, file);
   //printf("write done %llu %d\n", ino, ret);
   return ret;
@@ -178,6 +193,7 @@ int yfs_client::write(inum ino, std::string s, off_t off, size_t &size) {
 
 int yfs_client::read(inum ino, std::string &s, off_t off, size_t &size) {
   if(!isfile(ino)) return IOERR;
+  //myScopeLock L(lc, ino);
   int ret = get(ino, s);
   if(ret != OK) return ret;
 
@@ -189,7 +205,7 @@ int yfs_client::read(inum ino, std::string &s, off_t off, size_t &size) {
 
 int yfs_client::unlink(inum parent, std::string s) {
   if(!isdir(parent)) return IOERR;
-
+  myScopeLock L(lc, parent);
   std::string tmp;
   int ret = get(parent, tmp);  
   if(ret != OK) return ret;
@@ -197,6 +213,7 @@ int yfs_client::unlink(inum parent, std::string s) {
   file_list pdir(tmp); inum ino;
   if(!pdir.in_dir(s, ino)) return NOENT;
 
+  //myScopeLock L2(lc, ino);
   ret = remove(ino);
   if(ret != OK) return ret;
   return put(parent, pdir.remove_file(s));

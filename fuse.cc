@@ -186,7 +186,9 @@ fuseserver_write(fuse_req_t req, fuse_ino_t ino,
                  const char *buf, size_t size, off_t off,
                  struct fuse_file_info *fi)
 {
-  yfs_client::status ret = yfs->write(ino, std::string(buf).substr(0, size), off, size);
+  std::string tmp;
+  for (size_t i=0; i<size; i++) tmp += buf[i];
+  yfs_client::status ret = yfs->write(ino, tmp, off);
   if(ret != yfs_client::OK) {
     fuse_reply_err(req, ENOENT);
     return;
