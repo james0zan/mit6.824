@@ -123,7 +123,7 @@ fuseserver_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr,
 {
   printf("fuseserver_setattr 0x%x\n", to_set);
   if (FUSE_SET_ATTR_SIZE & to_set) {
-    printf("   fuseserver_setattr set size to %zu\n", attr->st_size);
+    printf("   fuseserver_setattr set size to %llu\n", attr->st_size);
     struct stat st;
     // You fill this in for Lab 2
 #if 0
@@ -219,8 +219,20 @@ fuseserver_createhelper(fuse_ino_t parent, const char *name,
   e->attr_timeout = 0.0;
   e->entry_timeout = 0.0;
   e->generation = 0;
-  // You fill this in for Lab 2
-  return yfs_client::NOENT;
+  
+  //printf("Here\n");
+  yfs_client::inum ino;
+  int ret = yfs->create(parent, std::string(name), ino);
+  //printf("create return %d %d\n", ret, yfs_client::OK);
+  if(ret != yfs_client::OK) return ret;
+  e->ino = ino;
+
+  struct stat st;
+  ret = getattr(ino, st);
+  //printf("getattr return %d %d\n", ret, yfs_client::OK);
+  if(ret != yfs_client::OK) return ret;
+  e->attr = st;
+  return yfs_client::OK;
 }
 
 void
@@ -268,13 +280,19 @@ fuseserver_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   e.attr_timeout = 0.0;
   e.entry_timeout = 0.0;
   e.generation = 0;
-  bool found = false;
-
-  // You fill this in for Lab 2
-  if (found)
+  
+  yfs_client::inum ino; struct stat st;
+  yfs_client::status ret = yfs->lookup(parent, std::string(name), ino);
+  if(ret == yfs_client::EXIST) {
+    e.ino = ino;    
+    ret = getattr(ino, st);
+    if(ret != yfs_client::OK) {
+      fuse_reply_err(req, ENOENT);
+      return;
+    }
+    e.attr = st;  
     fuse_reply_entry(req, &e);
-  else
-    fuse_reply_err(req, ENOENT);
+  } else fuse_reply_err(req, ENOENT);
 }
 
 
@@ -329,10 +347,16 @@ fuseserver_readdir(fuse_req_t req, fuse_ino_t ino, size_t size,
   }
 
   memset(&b, 0, sizeof(b));
+  std::vector<yfs_client::dirent> entries;
+  yfs_client::status ret = yfs->readdir(ino, entries);
+  if(ret != yfs_client::OK) {
+    fuse_reply_err(req, ENOENT);
+    return;
+  }
 
-
-  // You fill this in for Lab 2
-
+  for(std::vector<yfs_client::dirent>::iterator iter = entries.begin();
+       iter != entries.end(); iter++)
+    dirbuf_add(&b, iter->name.c_str(), iter->inum);
 
   reply_buf_limited(req, b.p, b.size, off, size);
   free(b.p);

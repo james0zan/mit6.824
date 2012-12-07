@@ -10,12 +10,23 @@
 
 extent_server::extent_server() {
   pthread_mutex_init(&lock, NULL);
+  disk.clear();
+  int i; put(1, "", i); // create the root
 }
 
+#ifdef _DEBUG
+std::string output(std::string x) {
+  for (size_t i=0; i<x.length(); i++) if (x[i] == 0) x[i] = ' ';
+  return x;
+}
+#endif
 
 int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 {
   ScopedLock m(&lock);
+#ifdef _DEBUG
+  printf("put %llu |%s|\n", id, output(buf).c_str());
+#endif
   file &ex = disk[id];
   ex.str = buf;
   
@@ -28,10 +39,15 @@ int extent_server::put(extent_protocol::extentid_t id, std::string buf, int &)
 int extent_server::get(extent_protocol::extentid_t id, std::string &buf)
 {
   ScopedLock m(&lock);
+#ifdef _DEBUG
+  printf("get %llu\n", id);
+#endif
   std::map<extent_protocol::extentid_t, file>::iterator it = disk.find(id);
   if (it == disk.end()) return extent_protocol::NOENT;
   buf = it->second.str;
-  
+#ifdef _DEBUG
+  printf("get %llu |%s|\n", id, output(buf).c_str());
+#endif
   unsigned int t = time(NULL);
   it->second.attr.atime = t;
   return extent_protocol::OK;

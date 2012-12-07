@@ -90,4 +90,58 @@ yfs_client::getdir(inum inum, dirinfo &din)
 }
 
 
+int yfs_client::read(inum ino, std::string &s) {
+  return ec->get(ino, s);
+}
 
+int yfs_client::write(inum ino, std::string s) {
+  return ec->put(ino, s);
+}
+
+int yfs_client::remove(inum ino) {
+  return ec->remove(ino);
+}
+
+int yfs_client::lookup(inum parent, std::string name, inum &ino) {
+  if(!isdir(parent)) return IOERR;
+
+  std::string tmp;
+  int ret = read(parent, tmp);
+  if( ret != OK ) return ret;
+
+  file_list pdir(tmp);
+  if(pdir.in_dir(name, ino)) return EXIST;
+  else return NOENT;
+}
+
+int yfs_client::create(inum parent, std::string name, inum &ino, bool dir) {
+  if(!isdir(parent)) return IOERR;
+
+  std::string tmp;
+  int ret = read(parent, tmp);
+  if( ret != OK ) return ret;
+
+  file_list pdir(tmp);
+  if(pdir.in_dir(name, ino)) return EXIST;
+
+  //TODO: while 1 check getattr == NOENT
+  if(dir) ino = (rand() & 0x7FFFFFFF);
+  else ino = (rand() & 0xFFFFFFFF) | 0x80000000;
+  
+  ret = write(ino, "");
+  if(ret != OK) return ret;
+  ret = write(parent, pdir.add_file(name, ino));
+  return ret;
+}
+
+int yfs_client::readdir(inum dir, std::vector<dirent> &entries) {
+  if(!isdir(dir)) return NOENT;
+
+  std::string tmp;
+  int ret = read(dir, tmp);
+  if(ret != OK) return ret;
+
+  file_list pdir(tmp);
+  pdir.get_entries(entries);
+  return OK;
+}

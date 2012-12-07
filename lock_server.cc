@@ -61,8 +61,8 @@ lock_server::release(int clt, lock_protocol::lockid_t lid, lock_protocol::status
 	}
 
 	possessed.erase(tmp);
-	pthread_mutex_unlock(&mutex);
 	pthread_cond_broadcast(&cond);
+	pthread_mutex_unlock(&mutex);
 
 #ifdef _DEBUG
 	printf("[log] %d release %d done\n", clt, (int)lid);
