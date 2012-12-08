@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "lock_client_cache.h"
 
 struct myScopeLock {
   lock_client *lc;
@@ -26,7 +27,7 @@ struct myScopeLock {
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-  lc = new lock_client(lock_dst);
+  lc = new lock_client_cache(lock_dst);
 }
 
 yfs_client::inum
