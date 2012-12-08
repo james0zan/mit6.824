@@ -64,7 +64,7 @@ int
 yfs_client::getfile(inum inum, fileinfo &fin)
 {
   int r = OK;
-  //myScopeLock L(lc, inum);
+  myScopeLock L(lc, inum);
   // You modify this function for Lab 3
   // - hold and release the file lock
 
@@ -90,7 +90,7 @@ int
 yfs_client::getdir(inum inum, dirinfo &din)
 {
   int r = OK;
-  //myScopeLock L(lc, inum);
+  myScopeLock L(lc, inum);
   // You modify this function for Lab 3
   // - hold and release the directory lock
 
@@ -123,7 +123,7 @@ int yfs_client::remove(inum ino) {
 
 int yfs_client::lookup(inum parent, std::string name, inum &ino) {
   if(!isdir(parent)) return IOERR;
-  //myScopeLock L(lc, parent);
+  myScopeLock L(lc, parent);
   std::string tmp;
   int ret = get(parent, tmp);
   if( ret != OK ) return ret;
@@ -146,7 +146,7 @@ int yfs_client::create(inum parent, std::string name, inum &ino, bool dir) {
   //TODO: while 1 check getattr == NOENT
   if(dir) ino = (rand() & 0x7FFFFFFF);
   else ino = (rand() & 0xFFFFFFFF) | 0x80000000;
-  //myScopeLock L2(lc, ino);
+  myScopeLock L2(lc, ino);
   ret = put(ino, "");
   if(ret != OK) return ret;
   ret = put(parent, pdir.add_file(name, ino));
@@ -155,7 +155,7 @@ int yfs_client::create(inum parent, std::string name, inum &ino, bool dir) {
 
 int yfs_client::readdir(inum dir, std::vector<dirent> &entries) {
   if(!isdir(dir)) return IOERR;
-  //myScopeLock L2(lc, dir);
+  myScopeLock L2(lc, dir);
   std::string tmp;
   int ret = get(dir, tmp);
   if(ret != OK) return ret;
@@ -193,7 +193,7 @@ int yfs_client::write(inum ino, std::string s, off_t off) {
 
 int yfs_client::read(inum ino, std::string &s, off_t off, size_t &size) {
   if(!isfile(ino)) return IOERR;
-  //myScopeLock L(lc, ino);
+  myScopeLock L(lc, ino);
   int ret = get(ino, s);
   if(ret != OK) return ret;
 
@@ -213,7 +213,7 @@ int yfs_client::unlink(inum parent, std::string s) {
   file_list pdir(tmp); inum ino;
   if(!pdir.in_dir(s, ino)) return NOENT;
 
-  //myScopeLock L2(lc, ino);
+  myScopeLock L2(lc, ino);
   ret = remove(ino);
   if(ret != OK) return ret;
   return put(parent, pdir.remove_file(s));
