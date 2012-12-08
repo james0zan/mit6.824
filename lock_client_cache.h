@@ -9,6 +9,7 @@
 #include "rpc.h"
 #include "lock_client.h"
 #include "lang/verify.h"
+#include "semaphore.h"
 
 // Classes that inherit lock_release_user can override dorelease so that 
 // that they will be called when lock_client releases a lock.
@@ -25,6 +26,22 @@ class lock_client_cache : public lock_client {
   int rlock_port;
   std::string hostname;
   std::string id;
+/*
+    none: client knows nothing about this lock
+    free: client owns the lock and no thread has it
+    locked: client owns the lock and a thread has it
+    revoked: locked + other client want it
+*/
+  enum CS {NONE, FREE, LOCKED};
+  struct lock {
+    int stat;
+    bool revoked;
+    pthread_t id;
+    sem_t cond;
+  };  
+  pthread_mutex_t mutex;
+  std::map<lock_protocol::lockid_t, lock> cache;
+
  public:
   lock_client_cache(std::string xdst, class lock_release_user *l = 0);
   virtual ~lock_client_cache() {};
