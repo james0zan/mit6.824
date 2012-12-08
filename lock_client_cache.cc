@@ -95,8 +95,9 @@ lock_client_cache::release(lock_protocol::lockid_t lid)
   } 
   //printf("%lu released %llu %d\n", pthread_self(), lid, tmp->second.revoked);
   if (tmp->second.revoked) {
+    lu->dorelease(lid);
     pthread_mutex_unlock(&mutex);
-
+    
     int r = cl->call(lock_protocol::release, lid, id, r);
     if(r != lock_protocol::OK) return r;
 
@@ -127,6 +128,7 @@ lock_client_cache::revoke_handler(lock_protocol::lockid_t lid,
   } */
 
   if (tmp->second.stat == FREE) {
+    lu->dorelease(lid);
     pthread_mutex_unlock(&mutex);
 
     int r = cl->call(lock_protocol::release, lid, id, r);

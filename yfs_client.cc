@@ -27,7 +27,7 @@ struct myScopeLock {
 yfs_client::yfs_client(std::string extent_dst, std::string lock_dst)
 {
   ec = new extent_client(extent_dst);
-  lc = new lock_client_cache(lock_dst);
+  lc = new lock_client_cache(lock_dst, new my_lock_release_user(ec));
 }
 
 yfs_client::inum
@@ -208,14 +208,18 @@ int yfs_client::unlink(inum parent, std::string s) {
   if(!isdir(parent)) return IOERR;
   myScopeLock L(lc, parent);
   std::string tmp;
-  int ret = get(parent, tmp);  
+  int ret = get(parent, tmp); 
+  //printf("$$GET %llu %d %s$$\n", parent, ret, s.c_str());
+
   if(ret != OK) return ret;
   
   file_list pdir(tmp); inum ino;
+  //printf("$$in_dir: %d\n", pdir.in_dir(s, ino));
   if(!pdir.in_dir(s, ino)) return NOENT;
 
   myScopeLock L2(lc, ino);
   ret = remove(ino);
+  //printf("$$ret: %d\n", ret);
   if(ret != OK) return ret;
   return put(parent, pdir.remove_file(s));
 }

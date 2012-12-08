@@ -39,6 +39,7 @@ extent_client::get(extent_protocol::extentid_t eid, std::string &buf)
       cl->call(extent_protocol::getattr, eid, cache[eid].attr);
     }
   }
+  printf("get: %llu %d %s\n", eid, tmp == cache.end(), buf.c_str());
   return ret;
 }
 
@@ -84,7 +85,8 @@ extent_client::remove(extent_protocol::extentid_t eid)
   ScopedLock m(&lock);
   extent_protocol::status ret = extent_protocol::OK;
   int r;
-  ret = cl->call(extent_protocol::remove, eid, r);
+  //TODO
+  cl->call(extent_protocol::remove, eid, r);
   cache.erase(eid);
   return ret;
 }
@@ -95,7 +97,7 @@ extent_client::flush(extent_protocol::extentid_t eid)
   extent_protocol::status ret = extent_protocol::OK;
   ScopedLock m(&lock);
   if(cache.count(eid) && cache[eid].dirty)
-    ret = cl->call(extent_protocol::put, eid, extent_cache[eid].buf, ret);
+    ret = cl->call(extent_protocol::put, eid, cache[eid].buf, ret);
 
   cache.erase(eid);
   return ret;
