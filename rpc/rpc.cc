@@ -662,7 +662,23 @@ rpcs::checkduplicate_and_update(unsigned int clt_nonce, unsigned int xid,
 {
 	ScopedLock rwl(&reply_window_m_);
 
-        // You fill this in for Lab 1.
+     std::list<reply_t> &replies = reply_window_[clt_nonce];
+	std::list<reply_t>::iterator it = replies.begin();
+	while (it != replies.end() && it->xid < xid_rep) {
+		free(it->buf);
+		it = replies.erase(it);
+	}
+
+	if (replies.size() && replies.front().xid > xid) return FORGOTTEN;
+	while (it != replies.end() && it->xid < xid) it++;
+	if(it != replies.end()) {
+		if(it->xid == xid)
+			if(it->cb_present) {
+				*b = it->buf; *sz = it->sz;
+				return DONE;
+			} else return INPROGRESS;
+	}
+	replies.insert(it, reply_t(xid));
 	return NEW;
 }
 
@@ -676,7 +692,15 @@ rpcs::add_reply(unsigned int clt_nonce, unsigned int xid,
 		char *b, int sz)
 {
 	ScopedLock rwl(&reply_window_m_);
-        // You fill this in for Lab 1.
+     
+	std::list<reply_t> &replies = reply_window_[clt_nonce];
+	std::list<reply_t>::iterator it;
+	for(it = replies.begin(); it != replies.end() && it->xid != xid; it++);
+
+	if(it != replies.end()) {
+		it->buf = b; it->sz = sz;
+		it->cb_present = true;
+	}
 }
 
 void
